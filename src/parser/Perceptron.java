@@ -23,10 +23,10 @@ final public class Perceptron implements Serializable{
     public State maxvSystemState;
     public float maxvScoreDiff;
 
-    public Perceptron(int n_labels, int weight_size){
-        this.N_LABELS = n_labels;
-        this.weight = new float[n_labels][weight_size];
-        this.aweight = new float[n_labels][weight_size];
+    public Perceptron(int labelSize, int weightSize) {
+        this.N_LABELS = labelSize;
+        this.weight = new float[labelSize][weightSize];
+        this.aweight = new float[labelSize][weightSize];
         this.maxvOracleState = new State();
         this.maxvSystemState = new State();
         this.maxvScoreDiff = 100000.0f;
@@ -41,9 +41,9 @@ final public class Perceptron implements Serializable{
     }
     
     final public void setMaxViolationPoint(State oracle, State state){
-        float o_score = calcScore(oracle.feature, oracle.last_action);
-        if (oracle.prev_state == null) oracle.score = o_score;
-        else oracle.score = oracle.prev_state.score + o_score;
+        float o_score = calcScore(oracle.feature, oracle.LAST_ACTION);
+        if (oracle.prevState == null) oracle.score = o_score;
+        else oracle.score = oracle.prevState.score + o_score;
 
         float score_diff =  oracle.score - state.score;
         if (score_diff <= this.maxvScoreDiff){
@@ -65,13 +65,13 @@ final public class Perceptron implements Serializable{
             ArrayList<Integer> systemFeature = systemState.feature;
 
             for (int j=0; j<oracleState.feature.size(); ++j) {
-                m = oracleState.last_action;
+                m = oracleState.LAST_ACTION;
                 n = oracleFeature.get(j);
                 this.weight[m][n] += 1.0;
                 this.aweight[m][n] += t;
             }
             for (int j=0; j<systemState.feature.size(); ++j) {
-                m = systemState.last_action;
+                m = systemState.LAST_ACTION;
                 n = systemFeature.get(j);
                 this.weight[m][n] -= 1.0;
                 this.aweight[m][n] -= t;

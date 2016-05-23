@@ -3,12 +3,10 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/home/hiroki/Parser/MultilingualDependencyParser/src/tagger/MatrixPerceptron.java</file>
-            <file>file:/home/hiroki/Parser/MultilingualDependencyParser/src/ling/Dict.java</file>
-            <file>file:/home/hiroki/Parser/MultilingualDependencyParser/src/tagger/Supertagger.java</file>
+            <file>file:/home/hiroki/Parser/MultilingualDependencyParser/src/parser/Feature.java</file>
             <file>file:/home/hiroki/Parser/MultilingualDependencyParser/src/main/Mode.java</file>
-            <file>file:/home/hiroki/Parser/MultilingualDependencyParser/src/ling/Token.java</file>
-            <file>file:/home/hiroki/Parser/MultilingualDependencyParser/src/tagger/SequentialFeaturizer.java</file>
+            <file>file:/home/hiroki/Parser/MultilingualDependencyParser/src/parser/Featurizer.java</file>
+            <file>file:/home/hiroki/Parser/MultilingualDependencyParser/src/utils/Reader.java</file>
         </group>
     </open-files>
 </project-private>

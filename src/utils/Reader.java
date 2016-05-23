@@ -22,38 +22,49 @@ final public class Reader {
     final String DELIMITER = "\t";
     final String[] ROOT = {"0", "_ROOT_", "-", "ROOT", "ROOT", "ROOT", "-1", "PAD"};
 
-    final public Sentence[] read(String fn, int n_sents, boolean isStag, boolean test) throws Exception{
+    final public Sentence[] read(String fn, int dataSizeLimit, boolean isParser, boolean test) throws Exception{
         if (fn == null) return null;
 
         String line;
         int sentIndex = 0;
+        int count = 0;
         ArrayList<Sentence> sentList = new ArrayList<>();
         ArrayList<String[]> tmpSent = new ArrayList<>();
-        if (!isStag) tmpSent.add(ROOT);
+        if (isParser) tmpSent.add(ROOT);
 
         try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(fn)))){
             while ((line=br.readLine()) != null){
                 if (line.length() == 0){
-                    sentList.add(new Sentence(sentIndex++, tmpSent, isStag, test));
+                    count++;
 
-                    if (sentList.size() == n_sents) break;
+                    Sentence sent = new Sentence(sentIndex, tmpSent, test);
+                    if (sent.isProjective() || test) {
+                        sentList.add(sent);
+                        sentIndex++;
+                    }
 
                     tmpSent = new ArrayList<>();
-                    if (!isStag) tmpSent.add(ROOT);
+                    if (isParser) tmpSent.add(ROOT);
 
-                    continue;
+                    if (sentList.size() == dataSizeLimit) break;
                 }
-
-                tmpSent.add(line.split(DELIMITER));
+                else if (!line.startsWith("#"))
+                    tmpSent.add(line.split(DELIMITER));
             }
 
-            if(tmpSent.size() > 1 || (isStag && tmpSent.size() > 0))
-                sentList.add(new Sentence(sentIndex++, tmpSent, isStag, test));
+            if(tmpSent.size() > 1) {
+                Sentence sent = new Sentence(sentIndex, tmpSent, test);
+                if (sent.isProjective() || test) {
+                    sentList.add(sent);
+                    sentIndex++;                    
+                }
+            }
         }
         
         Sentence[] sents = new Sentence[sentIndex];
         for (int i=0; i<sentIndex; ++i) sents[i] = sentList.get(i);
 
+        System.out.println(String.format("\tproj: %d  non-proj: %d", sentIndex, count-sentIndex));
         return sents;
     }
 

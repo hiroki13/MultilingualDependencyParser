@@ -5,9 +5,14 @@
  */
 package tagger;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import ling.Sentence;
+import ling.Token;
 import static org.apache.commons.math3.linear.MatrixUtils.createRealVector;
 import org.apache.commons.math3.linear.RealVector;
 
@@ -88,8 +93,9 @@ final public class Supertagger {
         System.out.println(String.format("\n\tacc:%f  crr:%f  ttl:%f", correct / total, correct, total));
     }
     
-    final public void test(Sentence[] testSents) {
+    final public void test(Sentence[] testSents, String outputFileName) throws IOException {
         averageWeight();
+        Hypothesis[] results = new Hypothesis[testSents.length];
 
         total = 0.0f;
         correct = 0.0f;
@@ -100,9 +106,12 @@ final public class Supertagger {
             Sentence sent = testSents[i];
             Hypothesis[] beam = decode(sent);
             checkAccuracy(sent, beam[0]);
+            results[i] = beam[0];
         }
         
         System.out.println(String.format("\n\tacc:%f  crr:%f  ttl:%f", correct / total, correct, total));
+        
+        if (outputFileName != null) outputResultingText(outputFileName, testSents, results);
     }
     
     private Hypothesis[] decode(Sentence sent) {
@@ -136,6 +145,24 @@ final public class Supertagger {
             if (label == sent.stags[t]) correct += 1.0;
             total += 1.0;
         }
+    }
+    
+    private void outputResultingText(String fn, Sentence[] sents, Hypothesis[] results) throws IOException {
+        PrintWriter pw = new PrintWriter(new BufferedWriter(new FileWriter(fn + ".conll")));
+
+        for (int i=0; i<results.length; ++i) {
+            Sentence sent = sents[i];
+            Hypothesis[] h = results[i].reverse(sent.N_TOKENS);
+
+            for (int j=0; j<h.length; ++j) {
+                Token t = sent.tokens[j];
+                String stag = Sentence.stagDict.getKey(h[j].label);
+                String text = String.format("%d\t%s\t_\t%s\t%s\t%s\t%d\t%s\t_\t_", t.INDEX, t.O_FORM, t.O_CPOS, t.O_POS, stag, t.O_HEAD, t.O_LABEL);
+                pw.println(text);
+            }
+            pw.println();
+        }
+        pw.close();
     }
 
     private Hypothesis getOracleHypo(Sentence sent, int[][] featureID) {

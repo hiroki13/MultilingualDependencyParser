@@ -5,35 +5,36 @@
  */
 package parser;
 
-import ling.Sentence;
 import java.util.ArrayList;
 import java.util.Collections;
+import ling.Sentence;
 
 /**
  *
  * @author hiroki
  */
 
-public class ArcStandard extends Parser {
+public class LabeledArcStandard extends Parser{
 
-    public ArcStandard(int beamWidth, int weightSize, boolean stag) {
+    public LabeledArcStandard(int beamWidth, int weightSize, int labelSize, boolean stag) {
         this.BEAM_WIDTH = beamWidth;
+        this.LABEL_SIZE = labelSize;
         this.STAG = stag;
-        this.perceptron = new Perceptron(3, weightSize);
+        this.perceptron = new Perceptron(labelSize * 2 + 1, weightSize);
         this.featurizer = new Featurizer(weightSize, stag);
     }
 
-    public ArcStandard(int beamWidth, Perceptron perceptron, boolean stag) {
+    public LabeledArcStandard(int beamWidth, Perceptron perceptron, boolean stag){
         this.BEAM_WIDTH = beamWidth;
         this.STAG = stag;
         this.perceptron = perceptron;
     }
 
     @Override
-    public void train(Sentence[] trainSents) {
+    public void train(Sentence[] trainSents){
         trainData = trainSents;
         oracles = new ArrayList[trainSents.length];
-        OracleParser oracleParser = new OracleParser(featurizer);
+        OracleParser oracleParser = new OracleParser(featurizer, LABEL_SIZE);
         
         for (int i=0; i<trainData.length; ++i) trainIndex.add(i);
         Collections.shuffle(trainIndex);
@@ -42,7 +43,7 @@ public class ArcStandard extends Parser {
             if (i % 1000 == 0 && i != 0) System.out.print(String.format("%d ", i));
 
             Sentence sent = trainData[trainIndex.get(i)];
-            State oracle = oracleParser.getOracle(sent);
+            State oracle = oracleParser.getLabeledOracle(sent);
             ArrayList<State> reversedOracle = oracle.reverseState();
             oracles[sent.INDEX] = reversedOracle;
 
@@ -54,7 +55,7 @@ public class ArcStandard extends Parser {
     }
 
     @Override
-    public void train() {
+    public void train(){
         Collections.shuffle(trainIndex);
 
         for(int i=0; i<trainData.length; ++i){
@@ -70,7 +71,7 @@ public class ArcStandard extends Parser {
     }
 
     @Override
-    final public void decode(Sentence sentence, ArrayList<State> reversedOracle) {
+    final public void decode(Sentence sentence, ArrayList<State> reversedOracle){
         State initState = new State(sentence.N_TOKENS);
         initState.s0 = 0;
         initState.b0 = 1;
@@ -96,7 +97,7 @@ public class ArcStandard extends Parser {
                 candidates.addSort((PredictedAction) actions.get(j));
             }
             
-            beam = getNBestStates(candidates, BEAM_WIDTH);
+            beam = getNBestStates(candidates);
             
             if (i < reversedOracle.size())
                 perceptron.setMaxViolationPoint(reversedOracle.get(i), beam[0]);
@@ -106,7 +107,7 @@ public class ArcStandard extends Parser {
     }
     
     @Override
-    final public State[] decode(Sentence sentence) {
+    final public State[] decode(Sentence sentence){
         State[] beam = new State[BEAM_WIDTH];
         State initState = new State(sentence.N_TOKENS);
         initState.s0 = 0;
@@ -131,24 +132,26 @@ public class ArcStandard extends Parser {
                 candidates.addSort((PredictedAction) actions.get(j));
             }
             
-            beam = getNBestStates(candidates, BEAM_WIDTH);            
+            beam = getNBestStates(candidates);            
         }
         
         return beam;
     }
     
     
-    private boolean[] getValidAction(Sentence sentence, State state) {
+    private boolean[] getValidAction(Sentence sentence, State state){
         boolean[] validAction = {true, true, true};
-        
+
+        // Shift
         if (state.b0 >= sentence.size()) validAction[0] = false;
 
+        // Left-Arc
         if (state.tail != null) {
-            if (state.tail.s0 <= 0)
-                validAction[1] = false;
+            if (state.tail.s0 <= 0) validAction[1] = false;
         }
         else validAction[1] = false;
 
+        //Right-Arc
         if (state.tail == null) validAction[2] = false;
         else if (state.tail.s0 == 0 && state.b0 < sentence.size()) validAction[2] = false;
 
@@ -156,45 +159,61 @@ public class ArcStandard extends Parser {
     }
     
     private ArrayList<PredictedAction> predictAction(State state,
-                                                    boolean[] validAction,
-                                                    ArrayList<Integer> feature){
+                                                       boolean[] validAction,
+                                                       ArrayList<Integer> feature){
         ArrayList<PredictedAction> predictedActions = new ArrayList<>();
         for (int action=0; action<3; ++action) {
-            if (validAction[action])
-                predictedActions.add(new PredictedAction(action, state, feature,
-                                      perceptron.calcScore(feature, action)));
+            if (validAction[action]) {
+                if (action == 0)
+                    predictedActions.add(new PredictedAction(action, state, feature, perceptron.calcScore(feature, action)));
+                else {
+                    for (int l=0; l<LABEL_SIZE; ++l) {
+                        int label = l + (action-1) * LABEL_SIZE + 1;
+                        predictedActions.add(new PredictedAction(label, state, feature, perceptron.calcScore(feature, label)));
+                    }
+                }
+            }
         }
         return predictedActions;
     }
     
     private ArrayList<PredictedAction> predictTestAction(State state,
-                                                    boolean[] validAction,
-                                                    ArrayList<Integer> feature){
+                                                           boolean[] validAction,
+                                                           ArrayList<Integer> feature){
         ArrayList<PredictedAction> predictedActions = new ArrayList<>();
         for (int action=0; action<3; ++action) {
-            if (validAction[action])
-                predictedActions.add(new PredictedAction(action, state, feature, calcScore(feature, action)));
+            if (validAction[action]) {
+                if (action == 0)
+                    predictedActions.add(new PredictedAction(action, state, feature, calcScore(feature, action)));
+                else {
+                    for (int l=0; l<LABEL_SIZE; ++l) {
+                        int label = l + (action-1) * LABEL_SIZE + 1;
+                        predictedActions.add(new PredictedAction(label, state, feature, calcScore(feature, label)));
+                    }
+                }
+            }
         }
         return predictedActions;
     }
     
-    private State[] getNBestStates(StateComparator candidates, int n){
-        State[] beam = new State[n];
+    private State[] getNBestStates(StateComparator candidates){
+        final State[] beam = new State[BEAM_WIDTH];
         final int nCands = candidates.size();
-        for (int i=0; i<n; ++i){
+        for (int i=0; i<BEAM_WIDTH; ++i){
             if (i >= nCands) break;
-            beam[i] = executeAction(candidates.get(i));
+            PredictedAction predAction = candidates.get(i);
+            beam[i] = executeAction(predAction);
         }
         return beam;
     }
     
     private State executeAction(PredictedAction predAction){
         int action = predAction.action;
-        State newState;
-        if (action==0) newState = shift(predAction);
-        else if (action==1) newState = left(predAction);
-        else newState = right(predAction);
-        return newState;
+        State state;
+        if (action == 0) state = shift(predAction);
+        else if (action < LABEL_SIZE + 1) state = left(predAction);
+        else state = right(predAction);
+        return state;
     }
     
     private State shift(PredictedAction action){
@@ -204,7 +223,7 @@ public class ArcStandard extends Parser {
         newState.b0 = curState.b0+1;
         newState.arcs = curState.arcs.clone();
         newState.tail = curState;
-        newState.LAST_ACTION = 0;
+        newState.LAST_ACTION = action.action;
         newState.prevState = curState;
         newState.feature = action.feature;
         newState.score = action.score;
@@ -221,7 +240,7 @@ public class ArcStandard extends Parser {
         newState.s0R = curState.s0R;
         newState.b0 = curState.b0;
         newState.tail = curState.tail.tail;
-        newState.LAST_ACTION = 1;
+        newState.LAST_ACTION = action.action;
         newState.prevState = curState;
         newState.feature = action.feature;
         newState.score = action.score;
@@ -238,11 +257,11 @@ public class ArcStandard extends Parser {
         newState.s0R = curState.s0;
         newState.b0 = curState.b0;
         newState.tail = curState.tail.tail;
-        newState.LAST_ACTION = 2;
+        newState.LAST_ACTION = action.action;
         newState.prevState = curState;
         newState.feature = action.feature;
         newState.score = action.score;
         return newState;
     }    
-
+    
 }

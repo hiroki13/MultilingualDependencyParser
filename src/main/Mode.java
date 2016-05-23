@@ -7,18 +7,18 @@ package main;
 
 import utils.OptionParser;
 import utils.Reader;
-import utils.AccuracyChecker;
+import ling.Token;
 import ling.Sentence;
+import tagger.Supertagger;
 import parser.Parser;
 import parser.ArcStandard;
+import parser.LabeledArcStandard;
 import parser.Perceptron;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import ling.Dict;
-import ling.Token;
-import tagger.Supertagger;
+import java.util.Arrays;
 
 /**
  *
@@ -29,15 +29,15 @@ final public class Mode {
     final OptionParser optionparser;
     final String selectedparser, modeselect;    
     final String TRAIN_FILE, TEST_FILE, OUTPUT_FILE, MODEL_FILE;    
-    final int ITERATION, BEAM_WIDTH, WEIGHT_SIZE, WINDOW_SIZE, DATA_SIZE;
-    final boolean STAG;
+    final int ITERATION, BEAM_WIDTH, WEIGHT_SIZE, WINDOW_SIZE, DATA_SIZE, N_SPLIT;
+    final boolean PARSER, IS_STAG, GOLD_STAG, LABELED;
     Sentence[] trainData, testData;
 
     public Mode(String[] args) {
         optionparser = new OptionParser(args);
 
         assert optionparser.isExsist("parser"): "Enter -parser arcstandard/supertagger";
-        assert optionparser.isExsist("mode"): "Enter -mode train/test";        
+        assert optionparser.isExsist("mode"): "Enter -mode train/test/jack";
         selectedparser = optionparser.getString("parser");
         modeselect = optionparser.getString("mode");
 
@@ -52,27 +52,45 @@ final public class Mode {
         WEIGHT_SIZE = optionparser.getInt("weight_size", 50000);
         WINDOW_SIZE = optionparser.getInt("window_size", 7);
         DATA_SIZE = optionparser.getInt("data_size", 100000);
-        STAG = optionparser.isExsist("stag");
+        N_SPLIT = optionparser.getInt("split", 5);
+        IS_STAG = optionparser.isExsist("stag") || !("arcstandard".equals(selectedparser));
+        GOLD_STAG = optionparser.isExsist("gold_stag");
+        LABELED = optionparser.isExsist("labeled");
+        PARSER = "arcstandard".equals(selectedparser);
     }
     
     public void setup() throws Exception{
-        boolean isStag = false;
         Reader reader = new Reader();
 
-        if (!"arcstandard".equals(selectedparser)) isStag = true;
+        Sentence.PARSER = PARSER;
+        Token.goldStag = GOLD_STAG;
 
         System.out.println("Loeading files...");
-        trainData = reader.read(TRAIN_FILE, DATA_SIZE, isStag, false);
-        testData = reader.read(TEST_FILE, DATA_SIZE, isStag, true);
+        trainData = reader.read(TRAIN_FILE, DATA_SIZE, PARSER, false);
+        testData = reader.read(TEST_FILE, DATA_SIZE, PARSER, true);
 
         System.out.println(String.format("\tTrain Sents: %d", trainData.length));
         if (testData != null)
             System.out.println(String.format("\tTest Sents: %d", testData.length));
+        
+        if ("jack".equals(modeselect)) {
+            System.out.println(String.format("\nSupertags: %d", Sentence.stagDict.size()));
+            jackknife();
+        }
+        else if ("arcstandard".equals(selectedparser)) {
+            int labelSize = Token.vocabLabel.values.size();
+            System.out.println(String.format("\nSupertags: %d  Labels: %d", Token.vocabStag.values.size(), labelSize));
 
-        if ("arcstandard".equals(selectedparser)) {
-            Dict a = Token.vocabStag;
-            System.out.println(String.format("\nSupertags: %d", Token.vocabStag.values.size()));
-            Parser parser = new ArcStandard(BEAM_WIDTH, WEIGHT_SIZE, STAG);
+            Parser parser;
+            if (LABELED) {
+                parser = new LabeledArcStandard(BEAM_WIDTH, WEIGHT_SIZE, labelSize, IS_STAG);
+                System.out.println("\nLABELED DEPENDENCY PARSER");
+            }
+            else {
+                parser = new ArcStandard(BEAM_WIDTH, WEIGHT_SIZE, IS_STAG);
+                System.out.println("\nUNLABELED DEPENDENCY PARSER");
+            }
+
             if ("train".equals(modeselect)) train(parser);
             else test();            
         }
@@ -99,19 +117,16 @@ final public class Mode {
             System.out.println("\n\tTraining Time: " + (time2 - time1) + " ms");
 
             if (testData == null) continue;
+            
+            if (i+1 == ITERATION) parser.test(testData, OUTPUT_FILE);
+            else parser.test(testData, null);
 
-            AccuracyChecker checker = new AccuracyChecker();
-            checker.test(testData, parser);                
-            double time = testData.length / ((double) checker.time);
-
+            double time = testData.length / ((double) parser.time);
             System.out.println(String.format("\tUAS:%.7s  CORRECT:%d  TOTAL:%d  TIME:%.6s sents/sec",
-                                            checker.correct/checker.total,
-                                            (int) checker.correct,
-                                            (int) checker.total,
+                                            parser.correct/parser.total,
+                                            (int) parser.correct,
+                                            (int) parser.total,
                                             time * 1000));
-
-            if (i+1 == ITERATION)
-                checker.output(OUTPUT_FILE, testData, parser, true);
         }
     }
 
@@ -129,31 +144,82 @@ final public class Mode {
             System.out.println("\n\tTraining Time: " + (time2 - time1) + " ms");
             
             time1 = System.currentTimeMillis();
-            supertagger.test(testData);
+            if (i == ITERATION - 1) supertagger.test(testData, OUTPUT_FILE);
+            else supertagger.test(testData, null);
             time2 = System.currentTimeMillis();
             System.out.println("\n\tTest Time: " + (time2 - time1) + " ms");
         }
     }
 
-    private void test() throws IOException, ClassNotFoundException{
-        Reader reader = new Reader();
+    private void jackknife() throws Exception{
+        System.out.println(String.format("\nBEAM:%d  WINDOW:%d", BEAM_WIDTH, WINDOW_SIZE));
+        System.out.println("\nLearning START");
+
+        Sentence[][] splitDataSet = splitData(trainData);
+        Sentence[][] trainDataSet = new Sentence[N_SPLIT][];
         
+        for (int i=0; i<N_SPLIT; ++i) {
+            Sentence[] tmpTrainData = new Sentence[trainData.length - splitDataSet[i].length];
+
+            int prevSentLen = 0;            
+            for (int j=0; j<N_SPLIT; ++j) {
+                if (i == j) continue;
+                Sentence[] tmpData = splitDataSet[j];
+                
+                for (int k=0; k<tmpData.length; ++k)
+                    tmpTrainData[prevSentLen + k] = tmpData[k];
+                prevSentLen += tmpData.length;
+            }
+            
+            trainDataSet[i] = tmpTrainData;
+        }
+
+        for (int k=0; k<N_SPLIT; ++k) {
+            System.out.println(String.format("\nJacknife %d: ", k+1));
+            Supertagger supertagger = new Supertagger(BEAM_WIDTH, Sentence.stagDict.size(), WEIGHT_SIZE, WINDOW_SIZE);
+
+            for(int i=0; i<ITERATION; ++i) {
+                System.out.println(String.format("\nIteration %d: ", i+1));
+
+                long time1 = System.currentTimeMillis();
+                if (i == 0) supertagger.train(trainDataSet[k]);
+                else supertagger.train();                
+                long time2 = System.currentTimeMillis();
+                System.out.println("\n\tTraining Time: " + (time2 - time1) + " ms");
+            
+                time1 = System.currentTimeMillis();
+                if (i == ITERATION - 1) supertagger.test(splitDataSet[k], OUTPUT_FILE + k);
+                else supertagger.test(splitDataSet[k], null);
+                time2 = System.currentTimeMillis();
+                System.out.println("\n\tTest Time: " + (time2 - time1) + " ms");
+            }
+        }
+    }
+    
+    private Sentence[][] splitData(Sentence[] data) {
+        int mod = data.length % N_SPLIT;
+        int split = data.length / N_SPLIT;
+
+        Sentence[][] splitData = new Sentence[N_SPLIT][];
+        
+        for (int i=0; i<N_SPLIT; ++i) {
+            if (i == N_SPLIT-1 && mod > 0)
+                splitData[i] = Arrays.copyOfRange(data, i * split, data.length);
+            else
+                splitData[i] = Arrays.copyOfRange(data, i * split, (i+1) * split);
+        }
+
+        return splitData;
+    }
+
+    private void test() throws IOException, ClassNotFoundException{
         System.out.println("Model Loaded...");
-        ObjectInputStream perceptronStream = new ObjectInputStream(new FileInputStream(MODEL_FILE + "_param.bin"));      
+        ObjectInputStream perceptronStream = new ObjectInputStream(new FileInputStream(MODEL_FILE + "_param.bin"));
         Perceptron perceptron = (Perceptron) perceptronStream.readObject();
         perceptronStream.close();
         System.out.println("Model Loading Completed\n");
 
-        ArcStandard parser = new ArcStandard(BEAM_WIDTH, perceptron, STAG);
+        ArcStandard parser = new ArcStandard(BEAM_WIDTH, perceptron, IS_STAG);
         parser.BEAM_WIDTH = BEAM_WIDTH;
-
-        System.out.println("Parsing START");                
-        AccuracyChecker checker = new AccuracyChecker();
-
-        checker.output(OUTPUT_FILE, testData, parser, false);                
-
-        double time = testData.length / ((double) checker.time);
-
-        System.out.println(String.format("\tTIME:%.6s sent./sec.", time*1000));            
     }    
 }

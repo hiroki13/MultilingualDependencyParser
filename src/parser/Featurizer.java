@@ -19,13 +19,12 @@ import java.util.Arrays;
 
 final public class Featurizer implements Serializable{
     final private int WEIGHT_SIZE;
-    final private boolean STAG;
-    final private int[][] bi = {{2,3},{2,4},{1,2},{1,4},{3,4}};
-    final private int[][] len = {{0,1},{1,2},{2,3},{3,4},{4,5}};
+    final private boolean IS_STAG;
+    final private int[][] PAIR = {{2,3},{2,4},{1,2},{1,4},{3,4}};
     
     public Featurizer(int w_size, boolean stag) {
         this.WEIGHT_SIZE = w_size;
-        this.STAG = stag;
+        this.IS_STAG = stag;
     }
 
     final public ArrayList<Integer> featurize(Sentence sentence, State state){
@@ -41,7 +40,7 @@ final public class Featurizer implements Serializable{
 
             if (f.index != -1){
                 feature[k++] = new int[]{2, i, f.form};
-                if (STAG) feature[k++] = new int[]{21, i, f.stag};
+                if (IS_STAG) feature[k++] = new int[]{21, i, f.stag};
  
                 if (i < 3){
                     if (f.lmc > -1)
@@ -67,8 +66,8 @@ final public class Featurizer implements Serializable{
             }
         }
         
-        for(int i=0; i<bi.length; ++i){
-            int[] b = bi[i];
+        for(int i=0; i<PAIR.length; ++i){
+            int[] b = PAIR[i];
             int w1 = b[0];
             int w2 = b[1];
             Feature f1 = feats[b[0]];
@@ -79,7 +78,7 @@ final public class Featurizer implements Serializable{
             feature[k++] = new int[]{13, i, w1, w2, f1.form, f2.pos};
             feature[k++] = new int[]{14, i, w1, w2, f1.pos, f2.form};
 
-            if (STAG) {
+            if (IS_STAG) {
                 feature[k++] = new int[]{31, i, f1.stag, f2.stag};
                 feature[k++] = new int[]{32, i, f1.stag, f2.pos};
                 feature[k++] = new int[]{33, i, f1.pos, f2.stag};
@@ -100,17 +99,14 @@ final public class Featurizer implements Serializable{
             
         }
         
-        for(int i=0; i<len.length; ++i){
-            int[] l = len[i];
-            int w1 = l[0];
-            int w2 = l[1];
-            Feature f1 = feats[w1];
-            Feature f2 = feats[w2];
+        for(int i=0; i<feats.length-1; ++i){
+            Feature f1 = feats[i];
+            Feature f2 = feats[i+1];
             
             if (f1.index > -1 && f2.index > -1){
                 int length = f2.index - f1.index;
-                feature[k++] = new int[]{101, i, w1, w2, length};
-                feature[k++] = new int[]{102, i, w1, w2, f1.pos, f2.pos, length};
+                feature[k++] = new int[]{101, i, length};
+                feature[k++] = new int[]{102, i, f1.pos, f2.pos, length};
             }
         }
         
