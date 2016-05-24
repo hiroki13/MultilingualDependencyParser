@@ -38,7 +38,7 @@ final public class Reader {
                     count++;
 
                     Sentence sent = new Sentence(sentIndex, tmpSent, test);
-                    if (sent.isProjective() || test) {
+                    if (sent.isProjective() || test || !isParser) {
                         sentList.add(sent);
                         sentIndex++;
                     }
@@ -54,7 +54,7 @@ final public class Reader {
 
             if(tmpSent.size() > 1) {
                 Sentence sent = new Sentence(sentIndex, tmpSent, test);
-                if (sent.isProjective() || test) {
+                if (sent.isProjective() || test || !isParser) {
                     sentList.add(sent);
                     sentIndex++;                    
                 }

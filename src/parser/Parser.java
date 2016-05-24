@@ -27,6 +27,7 @@ public class Parser {
     public Sentence[] trainData;
     public ArrayList<Integer> trainIndex = new ArrayList<>();
     public ArrayList<State>[] oracles;
+    public int n;
 
     public float correct;
     public float total;
@@ -38,10 +39,127 @@ public class Parser {
 
     public void train(){}    
 
-    public void decode(Sentence sentence, ArrayList<State> reversedOracle){}
+    public void decode(Sentence sentence, ArrayList<State> reversedOracle){
+        State initState = new State(sentence.N_TOKENS);
+        initState.s0 = 0;
+        initState.b0 = 1;
+        State[] beam = new State[BEAM_WIDTH];
+        beam[0] = initState;
+        int i = 0;
+        
+        while(beam[0].s0 != 0 || beam[0].b0 < sentence.size()){
+            this.n = 0;
+            PredictedAction[] queue = new PredictedAction[BEAM_WIDTH];
 
+            for (State state:beam){
+                if (state == null) break;
+
+                ArrayList feature = featurizer.featurize(sentence, state);
+                ArrayList<PredictedAction> predActions = predictAction(state, getValidAction(sentence, state), feature);
+                
+                for (int j=0; j<predActions.size(); j++)
+                    queue = addSort(queue, predActions.get(j));
+            }
+            
+            beam = executeActions(queue);
+
+            if (i < reversedOracle.size())
+                perceptron.setMaxViolationPoint(reversedOracle.get(i), beam[0]);
+            i += 1;
+        }
+        
+    }
+    
     public State[] decode(Sentence sentence){
-        return new State[1];
+        State[] beam = new State[BEAM_WIDTH];
+        State initState = new State(sentence.N_TOKENS);
+        initState.s0 = 0;
+        initState.b0 = 1;
+        beam[0] = initState;
+        
+        while(beam[0].s0 != 0 || beam[0].b0 < sentence.size()){
+            this.n = 0;
+            PredictedAction[] queue = new PredictedAction[BEAM_WIDTH];
+
+            for (State state:beam){
+                if (state == null) break;
+
+                ArrayList feature = featurizer.featurize(sentence, state);
+                ArrayList<PredictedAction> predActions = predictTestAction(state, getValidAction(sentence, state), feature);
+                
+                for (int j=0; j<predActions.size(); j++)
+                    queue = addSort(queue, predActions.get(j));
+            }
+            
+            beam = executeActions(queue);
+        }
+        
+        return beam;
+    }
+
+    private boolean[] getValidAction(Sentence sentence, State state){
+        boolean[] validAction = {true, true, true};
+
+        // Shift
+        if (state.b0 >= sentence.size()) validAction[0] = false;
+
+        // Left-Arc
+        if (state.tail != null) {
+            if (state.tail.s0 <= 0) validAction[1] = false;
+        }
+        else validAction[1] = false;
+
+        //Right-Arc
+        if (state.tail == null) validAction[2] = false;
+        else if (state.tail.s0 == 0 && state.b0 < sentence.size()) validAction[2] = false;
+
+        return validAction;
+    }
+    
+    public ArrayList<PredictedAction> predictAction(State state, boolean[] validAction, ArrayList<Integer> feature){
+        return new ArrayList<>();
+    }
+
+    public ArrayList<PredictedAction> predictTestAction(State state, boolean[] validAction, ArrayList<Integer> feature){
+        return new ArrayList<>();
+    }
+    
+    private State[] executeActions(PredictedAction[] queue) {
+        State[] beam = new State[BEAM_WIDTH];
+        for (int i=0; i<this.n; ++i)
+            beam[i] = executeAction(queue[i]);
+        return beam;
+    }
+    
+    public State executeAction(PredictedAction predAction){
+        return new State();
+    }
+    
+    private PredictedAction[] addSort(PredictedAction[] queue, PredictedAction action) {
+        if (this.n < BEAM_WIDTH) { 
+            queue[this.n++] = action;
+            queue = arrangeOrder(queue);
+        }
+        else{
+            if (queue[BEAM_WIDTH-1].score < action.score) {
+                queue[BEAM_WIDTH-1] = action;
+                queue = arrangeOrder(queue);
+            }
+        }
+        return queue;
+    }
+
+    private PredictedAction[] arrangeOrder(PredictedAction[] queue) {
+        if (this.n == 1) return queue;
+        for (int i=this.n-2; i>-1; i--) {
+            if (queue[i].score < queue[i+1].score) {
+                PredictedAction tmp = queue[i];
+                queue[i] = queue[i+1];
+                queue[i+1] = tmp;
+            }
+            else return queue;
+        }
+        return queue;
     }
 
     final public void checkUAS(Sentence sentence, State state){

@@ -21,7 +21,6 @@ final public class State implements Serializable{
     public int LAST_ACTION;
     public State tail, prevState;
     public float score;
-    public String transition;
     public ArrayList<Integer> feature;
     
     public State(){}
@@ -42,7 +41,6 @@ final public class State implements Serializable{
         this.tail = state.tail;
         this.prevState = state.prevState;
         this.score = state.score;
-        this.transition = state.transition;
         this.feature = state.feature;
     }
 

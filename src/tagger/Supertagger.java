@@ -55,8 +55,8 @@ final public class Supertagger {
             Sentence sent = trainData[index];
             int[][] featureID = cacheFeatureID[index];
             Hypothesis oracleHypo = cacheOracleHypo[index];
-            Hypothesis[] rOracleHypo = oracleHypo.reverse(sent.N_TOKENS);
-            Hypothesis[] beam = setMaxViolationPoint(sent, rOracleHypo, featureID);
+            Hypothesis[] reversedOracleHypo = oracleHypo.reverse(sent.N_TOKENS);
+            Hypothesis[] beam = setMaxViolationPoint(sent, reversedOracleHypo, featureID);
             perceptron.updateWeights();
             checkAccuracy(oracleHypo, beam[0]);
         }
@@ -197,7 +197,7 @@ final public class Supertagger {
     }
     
     private Hypothesis[] beamSearch(int t, Hypothesis[] beam, Sentence sent, int[][] featureID) {
-        HypoComparator orderedHypoQueue = new HypoComparator();
+        HypoComparator orderedHypoQueue = new HypoComparator(BEAM_WIDTH);
 
         int[] featureID_t = featureID[t];
         RealVector featureScore = perceptron.getScore(featureID_t);
@@ -227,7 +227,7 @@ final public class Supertagger {
     }
     
     private Hypothesis[] beamSearch(int t, Hypothesis[] beam, Sentence sent) {
-        HypoComparator orderedHypoQueue = new HypoComparator();
+        HypoComparator orderedHypoQueue = new HypoComparator(BEAM_WIDTH);
 
         int[] featureID_t = featurizer.getFeatureID(featurizer.getStrFeature(sent, t), false);
 //        int[][] markovFeature = featurizer.getMarkovFeature(sent, t);

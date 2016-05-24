@@ -69,96 +69,9 @@ public class LabeledArcStandard extends Parser{
             }
         }
     }
-
+        
     @Override
-    final public void decode(Sentence sentence, ArrayList<State> reversedOracle){
-        State initState = new State(sentence.N_TOKENS);
-        initState.s0 = 0;
-        initState.b0 = 1;
-        State[] beam = new State[BEAM_WIDTH];
-        beam[0] = initState;
-        int i = 0;
-        
-        while(beam[0].s0 != 0 || beam[0].b0 < sentence.size()){
-            StateComparator candidates = new StateComparator();
-            ArrayList<PredictedAction> actions = new ArrayList<>();
-
-            for (State state:beam){
-                if (state == null) break;
-
-                ArrayList feature = featurizer.featurize(sentence, state);
-                ArrayList predActions = predictAction(state, getValidAction(sentence, state), feature);
-                
-                for (int j=0; j<predActions.size(); j++)
-                    actions.add((PredictedAction) predActions.get(j));
-            }
-            
-            for (int j=0; j<actions.size(); j++){
-                candidates.addSort((PredictedAction) actions.get(j));
-            }
-            
-            beam = getNBestStates(candidates);
-            
-            if (i < reversedOracle.size())
-                perceptron.setMaxViolationPoint(reversedOracle.get(i), beam[0]);
-            i += 1;
-        }
-        
-    }
-    
-    @Override
-    final public State[] decode(Sentence sentence){
-        State[] beam = new State[BEAM_WIDTH];
-        State initState = new State(sentence.N_TOKENS);
-        initState.s0 = 0;
-        initState.b0 = 1;
-        beam[0] = initState;
-        
-        while(beam[0].s0 != 0 || beam[0].b0 < sentence.size()){
-            StateComparator candidates = new StateComparator();
-            ArrayList<PredictedAction> actions = new ArrayList<>();
-
-            for (State state:beam){
-                if (state == null) break;
-
-                ArrayList feature = featurizer.featurize(sentence, state);
-                ArrayList predActions = predictTestAction(state, getValidAction(sentence, state), feature);
-                
-                for (int j=0; j<predActions.size(); j++)
-                    actions.add((PredictedAction) predActions.get(j));
-            }
-            
-            for (int j=0; j<actions.size(); j++){
-                candidates.addSort((PredictedAction) actions.get(j));
-            }
-            
-            beam = getNBestStates(candidates);            
-        }
-        
-        return beam;
-    }
-    
-    
-    private boolean[] getValidAction(Sentence sentence, State state){
-        boolean[] validAction = {true, true, true};
-
-        // Shift
-        if (state.b0 >= sentence.size()) validAction[0] = false;
-
-        // Left-Arc
-        if (state.tail != null) {
-            if (state.tail.s0 <= 0) validAction[1] = false;
-        }
-        else validAction[1] = false;
-
-        //Right-Arc
-        if (state.tail == null) validAction[2] = false;
-        else if (state.tail.s0 == 0 && state.b0 < sentence.size()) validAction[2] = false;
-
-        return validAction;
-    }
-    
-    private ArrayList<PredictedAction> predictAction(State state,
+    final public ArrayList<PredictedAction> predictAction(State state,
                                                        boolean[] validAction,
                                                        ArrayList<Integer> feature){
         ArrayList<PredictedAction> predictedActions = new ArrayList<>();
@@ -177,7 +90,8 @@ public class LabeledArcStandard extends Parser{
         return predictedActions;
     }
     
-    private ArrayList<PredictedAction> predictTestAction(State state,
+    @Override
+    final public ArrayList<PredictedAction> predictTestAction(State state,
                                                            boolean[] validAction,
                                                            ArrayList<Integer> feature){
         ArrayList<PredictedAction> predictedActions = new ArrayList<>();
@@ -196,18 +110,8 @@ public class LabeledArcStandard extends Parser{
         return predictedActions;
     }
     
-    private State[] getNBestStates(StateComparator candidates){
-        final State[] beam = new State[BEAM_WIDTH];
-        final int nCands = candidates.size();
-        for (int i=0; i<BEAM_WIDTH; ++i){
-            if (i >= nCands) break;
-            PredictedAction predAction = candidates.get(i);
-            beam[i] = executeAction(predAction);
-        }
-        return beam;
-    }
-    
-    private State executeAction(PredictedAction predAction){
+    @Override
+    final public State executeAction(PredictedAction predAction){
         int action = predAction.action;
         State state;
         if (action == 0) state = shift(predAction);
