@@ -19,6 +19,7 @@ import ling.Token;
 final public class SequentialFeaturizer implements Serializable {
     final private int WEIGHT_SIZE;
     final private int WINDOW_SIZE;
+    final private boolean IS_HASH;
     final private int SLIDE;
     final private int[][] bi = {{0,1},{0,2},{0,3},{-1,0},{-2,0},{-3,0},{1,2},{-2,-1}};
     final private int BOS = Token.vocabForm.getValue("<BOS>");
@@ -26,23 +27,26 @@ final public class SequentialFeaturizer implements Serializable {
     final private HashMap<String, Integer> phi_dict;
     int k = 0;
 
-    public SequentialFeaturizer(int weightSize, int windowSize) {
+    public SequentialFeaturizer(int weightSize, int windowSize, boolean isHash) {
         WEIGHT_SIZE = weightSize;
         WINDOW_SIZE = windowSize;
+        IS_HASH = isHash;
         SLIDE = WINDOW_SIZE / 2;
         phi_dict = new HashMap<>();
     }
-/*
+
     final public int[] featurize(Sentence sentence, int w_i) {
-        return getFeatureID(getFeature(sentence, w_i));
-    }
-*/
-    final public int[] featurize(Sentence sentence, int w_i) {
-        return getFeatureID(getStrFeature(sentence, w_i), false);
+        if (IS_HASH)
+            return getFeatureID(getFeature(sentence, w_i));
+        else
+            return getFeatureID(getStrFeature(sentence, w_i), false);
     }
 
     final public int[] featurize(Sentence sentence, int w_i, int label1, int label2) {
-        return getFeatureID(getStrMarkovFeature(sentence, w_i), label1, label2, false);
+        if (IS_HASH)
+            return getFeatureID(getMarkovFeature(sentence, w_i), label1, label2);
+        else
+            return getFeatureID(getStrMarkovFeature(sentence, w_i), label1, label2, false);
     }
 
     final public int[][] getFeature(Sentence sent, int w_i) {

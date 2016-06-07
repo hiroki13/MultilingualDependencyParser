@@ -19,6 +19,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.Arrays;
+import ling.Dict;
 
 /**
  *
@@ -29,8 +30,8 @@ final public class Mode {
     final OptionParser optionparser;
     final String selectedparser, modeselect;    
     final String TRAIN_FILE, TEST_FILE, OUTPUT_FILE, MODEL_FILE;    
-    final int ITERATION, BEAM_WIDTH, WEIGHT_SIZE, WINDOW_SIZE, DATA_SIZE, N_SPLIT;
-    final boolean PARSER, IS_STAG, GOLD_STAG, LABELED;
+    final int ITERATION, BEAM_WIDTH, WEIGHT_SIZE, WINDOW_SIZE, DATA_SIZE, N_SPLIT, STAG_ID;
+    final boolean PARSER, IS_STAG, GOLD_STAG, LABELED, IS_HASH;
     Sentence[] trainData, testData;
 
     public Mode(String[] args) {
@@ -53,9 +54,11 @@ final public class Mode {
         WINDOW_SIZE = optionparser.getInt("window_size", 7);
         DATA_SIZE = optionparser.getInt("data_size", 100000);
         N_SPLIT = optionparser.getInt("split", 5);
+        STAG_ID = optionparser.getInt("stag_id", 1);
         IS_STAG = optionparser.isExsist("stag") || !("arcstandard".equals(selectedparser));
         GOLD_STAG = optionparser.isExsist("gold_stag");
         LABELED = optionparser.isExsist("labeled");
+        IS_HASH = optionparser.isExsist("hash");
         PARSER = "arcstandard".equals(selectedparser);
     }
     
@@ -63,6 +66,7 @@ final public class Mode {
         Reader reader = new Reader();
 
         Sentence.PARSER = PARSER;
+        Sentence.STAG_ID = STAG_ID;
         Token.goldStag = GOLD_STAG;
 
         System.out.println("Loeading files...");
@@ -74,12 +78,12 @@ final public class Mode {
             System.out.println(String.format("\tTest Sents: %d", testData.length));
         
         if ("jack".equals(modeselect)) {
-            System.out.println(String.format("\nSupertags: %d", Sentence.stagDict.size()));
+            System.out.println(String.format("\nStag ID: %d  Stags: %d", STAG_ID, Sentence.stagDict.size()));
             jackknife();
         }
         else if ("arcstandard".equals(selectedparser)) {
             int labelSize = Token.vocabLabel.values.size();
-            System.out.println(String.format("\nSupertags: %d  Labels: %d", Token.vocabStag.values.size(), labelSize));
+            System.out.println(String.format("\nStagID: %d  Stags: %d  Labels: %d", STAG_ID, Token.vocabStag.values.size(), labelSize));
 
             Parser parser;
             if (LABELED) {
@@ -95,8 +99,8 @@ final public class Mode {
             else test();            
         }
         else {
-            Supertagger supertagger = new Supertagger(BEAM_WIDTH, Sentence.stagDict.size(), WEIGHT_SIZE, WINDOW_SIZE);
-            System.out.println(String.format("\nSupertags: %d", Sentence.stagDict.size()));
+            Supertagger supertagger = new Supertagger(BEAM_WIDTH, Sentence.stagDict.size(), WEIGHT_SIZE, WINDOW_SIZE, IS_HASH);
+            System.out.println(String.format("\nStag ID:%d  Stags: %d", STAG_ID, Sentence.stagDict.size()));
             if ("train".equals(modeselect)) train(supertagger);
             else test();                        
         }
@@ -133,6 +137,7 @@ final public class Mode {
     private void train(Supertagger supertagger) throws Exception{
         System.out.println(String.format("\nBEAM:%d  WINDOW:%d", BEAM_WIDTH, WINDOW_SIZE));
         System.out.println("\nLearning START");
+        Dict d = Sentence.stagDict;
             
         for(int i=0; i<ITERATION; ++i) {
             System.out.println(String.format("\nIteration %d: ", i+1));
@@ -176,7 +181,7 @@ final public class Mode {
 
         for (int k=0; k<N_SPLIT; ++k) {
             System.out.println(String.format("\nJacknife %d: ", k+1));
-            Supertagger supertagger = new Supertagger(BEAM_WIDTH, Sentence.stagDict.size(), WEIGHT_SIZE, WINDOW_SIZE);
+            Supertagger supertagger = new Supertagger(BEAM_WIDTH, Sentence.stagDict.size(), WEIGHT_SIZE, WINDOW_SIZE, IS_HASH);
 
             for(int i=0; i<ITERATION; ++i) {
                 System.out.println(String.format("\nIteration %d: ", i+1));

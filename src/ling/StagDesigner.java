@@ -3,97 +3,47 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package ling;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import static ling.Sentence.stagDict;
 
 /**
  *
  * @author hiroki
  */
 
-final public class Sentence {
-    final static private String HYPH = "-";
+final public class StagDesigner {
     final static private List<String> nomDep = Arrays.asList("nsubj", "nsubjpass", "dobj", "iobj", "SUB", "OBJ", "PRD");
     final static private List<String> prdDep = Arrays.asList("csubj", "csubjpass", "ccomp", "VC");
     final static private String xDep = "xcomp";
 
-    public static boolean PARSER = false;
-    public static int STAG_ID;
-    final public int INDEX, N_TOKENS;
-    final public Token[] tokens;
-    public int[] arcs;
+    private int N_TOKENS;
+    private Token[] tokens;
+    private int[] stags;
 
-    final public static Dict stagDict = new Dict();
-    public int[] stags;
+    final public int[] designStag(int STAG_ID, Token[] tokens, boolean test) {
+        this.N_TOKENS = tokens.length;
+        this.tokens = tokens;
 
-    public Sentence(int index, ArrayList<String[]> lines, boolean test) {
-        INDEX = index;
-        N_TOKENS = lines.size() - countMultiWords(lines);
-        tokens = new Token[N_TOKENS];
-        setTokens(lines);
-                
-        if (!PARSER) {
-            if (STAG_ID == 2) setStagB(test);
-            else if (STAG_ID == 3) setStagC(test);
-            else if (STAG_ID == 4) setStagD(test);
-            else if (STAG_ID == 5) setStagE(test);
-            else if (STAG_ID == 6) setStagF(test);
-            else if (STAG_ID == 7) setStagG(test);
-            else if (STAG_ID == 8) setStagH(test);
-            else if (STAG_ID == 9) setStagI(test);
-            else if (STAG_ID == 10) setStagJ(test);
-            else if (STAG_ID == 11) setStagK(test);
-            else setStagA(test);
-        }
-        else setArcs();
+        if (STAG_ID == 2) setStagB(test);            
+        else if (STAG_ID == 3) setStagC(test);        
+        else if (STAG_ID == 4) setStagD(test);        
+        else if (STAG_ID == 5) setStagE(test);        
+        else if (STAG_ID == 6) setStagF(test);        
+        else if (STAG_ID == 7) setStagG(test);        
+        else if (STAG_ID == 8) setStagH(test);        
+        else if (STAG_ID == 9) setStagI(test);        
+        else if (STAG_ID == 10) setStagJ(test);        
+        else if (STAG_ID == 11) setStagK(test);        
+        else setStagA(test);
+        
+        return this.stags;
     }
 
-    private int countMultiWords(ArrayList<String[]> lines) {
-        int k = 0;
-        for (int i=0; i<lines.size(); ++i)
-            if (lines.get(i)[0].contains(HYPH)) k++;
-        return k;
-    }
-
-    final public void setTokens(ArrayList<String[]> lines) {
-        int k = 0;
-        for (int i=0; i<lines.size(); ++i) {
-            String[] line = lines.get(i);
-            if (!line[0].contains(HYPH)) tokens[k++] = new Token(line, lines);
-        }
-    }
-
-    final public void setArcs(){
-        arcs = new int[N_TOKENS];
-        for (int i=0; i<N_TOKENS; ++i) {
-            Token t = tokens[i];
-            arcs[t.INDEX] = t.O_HEAD;
-        }
-    }
-    
-    final public boolean isProjective(){
-        for (int i=1; i<N_TOKENS; ++i) {
-            Token t1 = tokens[i];
-
-            for (int j=1; j<N_TOKENS; ++j) {
-                if (i == j) continue;
-                Token t2 = tokens[j];
-                if (t1.INDEX < t2.INDEX && t2.INDEX < t1.O_HEAD)
-                    if (t1.O_HEAD < t2.O_HEAD || t2.O_HEAD < t1.INDEX)
-                        return false;
-                if (t1.INDEX > t2.INDEX && t2.INDEX > t1.O_HEAD)
-                    if (t1.O_HEAD > t2.O_HEAD || t2.O_HEAD > t1.INDEX)
-                        return false;
-            }
-        }
-        return true;
-    }
-    
     final public void setStagA(boolean test) {
         // Label/Dir+_L_R
 
@@ -324,11 +274,12 @@ final public class Sentence {
 
         for (int i=0; i<N_TOKENS; ++i) {
             String stag;
+            boolean child = false;
             ArrayList<String> chLabel = new ArrayList<>();
 
             Token token1 = tokens[i];
 
-            stag = token1.O_LABEL + "_";
+            stag = token1.O_LABEL;
             
             for (int j=0; j<N_TOKENS; ++j) {
                 if (i==j) continue;
@@ -339,13 +290,17 @@ final public class Sentence {
                     String label = token2.O_LABEL;
                     if (nomDep.contains(label) || prdDep.contains(label) || xDep.equals(label))
                         chLabel.add(token2.O_LABEL);
+                    child = true;
                 }
             }
             
             Collections.sort(chLabel);
 
-            for (int j=0; j<chLabel.size(); ++j)
-                stag += chLabel.get(j) + ":";
+            if (child) {
+                stag += "_";
+                for (int j=0; j<chLabel.size(); ++j)
+                    stag += chLabel.get(j) + ":";
+            }
                 
             if (!test) stags[i] = stagDict.getValue(stag);
             else {
@@ -495,8 +450,5 @@ final public class Sentence {
         }
     }
 
-    final public int size() {
-        return N_TOKENS;
-    }
 
 }

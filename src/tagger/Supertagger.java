@@ -24,6 +24,7 @@ import org.apache.commons.math3.linear.RealVector;
 final public class Supertagger {
     final private int BEAM_WIDTH;
     final private int N_LABELS;
+    final private boolean IS_HASH;
     final private MatrixPerceptron perceptron;
     final private SequentialFeaturizer featurizer;
     final private ArrayList<Integer> trainIndex = new ArrayList<>();
@@ -35,11 +36,12 @@ final public class Supertagger {
     float total = 0.0f;
     float correct = 0.0f;
     
-    public Supertagger(int beamWidth, int numLabels, int weightSize, int windowSize) {
+    public Supertagger(int beamWidth, int numLabels, int weightSize, int windowSize, boolean isHash) {
         BEAM_WIDTH = beamWidth;
         N_LABELS = numLabels;
+        IS_HASH = isHash;
         perceptron = new MatrixPerceptron(numLabels, weightSize);
-        featurizer = new SequentialFeaturizer(weightSize, windowSize);
+        featurizer = new SequentialFeaturizer(weightSize, windowSize, IS_HASH);
     }
     
     final public void train() {
@@ -201,16 +203,23 @@ final public class Supertagger {
 
         int[] featureID_t = featureID[t];
         RealVector featureScore = perceptron.getScore(featureID_t);
-//        int[][] markovFeature = featurizer.getMarkovFeature(sent, t);
-        String[] markovFeature = featurizer.getStrMarkovFeature(sent, t);
+        int[][] markovFeature = null;
+        String[] markovStrFeature = null;
+        if (IS_HASH)
+            markovFeature = featurizer.getMarkovFeature(sent, t);
+        else
+            markovStrFeature = featurizer.getStrMarkovFeature(sent, t);
 
         for (int k=0; k<BEAM_WIDTH; ++k) {
             Hypothesis hypo = beam[k];
                 
             if (hypo == null) break;
                 
-//            int[] markovFeatureID = featurizer.getFeatureID(markovFeature, hypo.label, hypo.prevHypo.label);
-            int[] markovFeatureID = featurizer.getFeatureID(markovFeature, hypo.label, hypo.prevHypo.label, false);
+            int[] markovFeatureID;
+            if (IS_HASH)
+                markovFeatureID = featurizer.getFeatureID(markovFeature, hypo.label, hypo.prevHypo.label);
+            else
+                markovFeatureID = featurizer.getFeatureID(markovStrFeature, hypo.label, hypo.prevHypo.label, false);
             RealVector markovFeatureScore = perceptron.getScore(markovFeatureID);
             double[] score = featureScore.add(markovFeatureScore).toArray();
                 
@@ -229,9 +238,19 @@ final public class Supertagger {
     private Hypothesis[] beamSearch(int t, Hypothesis[] beam, Sentence sent) {
         HypoComparator orderedHypoQueue = new HypoComparator(BEAM_WIDTH);
 
-        int[] featureID_t = featurizer.getFeatureID(featurizer.getStrFeature(sent, t), false);
-//        int[][] markovFeature = featurizer.getMarkovFeature(sent, t);
-        String[] markovFeature = featurizer.getStrMarkovFeature(sent, t);
+        int[] featureID_t;
+        if (IS_HASH)
+            featureID_t = featurizer.getFeatureID(featurizer.getFeature(sent, t));
+        else
+            featureID_t = featurizer.getFeatureID(featurizer.getStrFeature(sent, t), false);
+
+        int[][] markovFeature = null;
+        String[] markovStrFeature = null;
+        if (IS_HASH)
+            markovFeature = featurizer.getMarkovFeature(sent, t);
+        else
+            markovStrFeature = featurizer.getStrMarkovFeature(sent, t);
+        
         RealVector featureScore = getScore(featureID_t);
 
         for (int k=0; k<BEAM_WIDTH; ++k) {
@@ -239,8 +258,11 @@ final public class Supertagger {
                 
             if (hypo == null) break;
                 
-//            int[] markovFeatureID = featurizer.getFeatureID(markovFeature, hypo.label, hypo.prevHypo.label);
-            int[] markovFeatureID = featurizer.getFeatureID(markovFeature, hypo.label, hypo.prevHypo.label, true);
+            int[] markovFeatureID;
+            if (IS_HASH)
+                markovFeatureID = featurizer.getFeatureID(markovFeature, hypo.label, hypo.prevHypo.label);
+            else
+                markovFeatureID = featurizer.getFeatureID(markovStrFeature, hypo.label, hypo.prevHypo.label, true);
             RealVector markovFeatureScore = getScore(markovFeatureID);
             double[] score = featureScore.add(markovFeatureScore).toArray();
                 

@@ -81,5 +81,4 @@ final public class Token {
         return stag;
     }
 
-
 }
