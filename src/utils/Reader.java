@@ -12,6 +12,7 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import ling.Token;
 
 /**
  *
@@ -39,6 +40,8 @@ final public class Reader {
 
                     Sentence sent = new Sentence(sentIndex, tmpSent, test);
                     if (sent.isProjective() || test || !isParser) {
+                        if (Token.IS_GOLD_STAG)
+                            sent.setGoldStags();
                         sentList.add(sent);
                         sentIndex++;
                     }

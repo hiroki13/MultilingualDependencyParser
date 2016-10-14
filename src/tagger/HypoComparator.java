@@ -19,16 +19,16 @@ public class HypoComparator extends ArrayList<Hypothesis>{
         this.BEAM_WIDTH = beamWidth;
     }
 
-    final public void addSort(Hypothesis h){
+    final public void addSort(int label, double score, int[] featureID_t, int[] markovFeatureID, Hypothesis h){
         if (this.size() < BEAM_WIDTH) { 
-            this.add(h);
+            this.add(new Hypothesis(label, score, featureID_t, markovFeatureID, h));
             arrangeOrder();
         }
         else{
-            int last = this.size()-1;
-            if (this.get(last).score < h.score) {
+            int last = this.size() - 1;
+            if (this.get(last).score < h.score + score) {
                 this.remove(last);
-                this.add(h);
+                this.add(new Hypothesis(label, score, featureID_t, markovFeatureID, h));
                 arrangeOrder();
             }
         }

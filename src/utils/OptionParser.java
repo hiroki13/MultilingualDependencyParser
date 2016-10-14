@@ -37,7 +37,7 @@ final public class OptionParser {
 
     final public int getInt(String key, int defaultvalue){
         for(int i=0; i<args.length; i++)
-            if(("-"+key).equals(args[i]))
+            if(("-" + key).equals(args[i]))
                 return Integer.valueOf(args[i+1]);
         return defaultvalue;
     }

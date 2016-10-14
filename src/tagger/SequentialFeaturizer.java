@@ -24,7 +24,7 @@ final public class SequentialFeaturizer implements Serializable {
     final private int[][] bi = {{0,1},{0,2},{0,3},{-1,0},{-2,0},{-3,0},{1,2},{-2,-1}};
     final private int BOS = Token.vocabForm.getValue("<BOS>");
     final private int EOS = Token.vocabForm.getValue("<EOS>");
-    final private HashMap<String, Integer> phi_dict;
+    final private HashMap<String, Integer> phiDict;
     int k = 0;
 
     public SequentialFeaturizer(int weightSize, int windowSize, boolean isHash) {
@@ -32,7 +32,7 @@ final public class SequentialFeaturizer implements Serializable {
         WINDOW_SIZE = windowSize;
         IS_HASH = isHash;
         SLIDE = WINDOW_SIZE / 2;
-        phi_dict = new HashMap<>();
+        phiDict = new HashMap<>();
     }
 
     final public int[] featurize(Sentence sentence, int w_i) {
@@ -52,16 +52,17 @@ final public class SequentialFeaturizer implements Serializable {
     final public int[][] getFeature(Sentence sent, int w_i) {
         k = 0;
         Token[] tokens = sent.tokens;
-        int[][] feature = new int[30][];
+        int[][] feature = new int[37][];
         
         for(int i=-SLIDE; i<SLIDE+1; ++i) {
             int index = w_i + i;
             int[] phi = getPhi(index, tokens);
             int form = phi[0];
             int pos = phi[1];
-
+            
             feature[k++] = new int[]{1, i, form};
             feature[k++] = new int[]{2, i, pos};
+            feature[k++] = new int[]{3, i, pos, form};
         }
         
         for(int i=0; i<bi.length; ++i) {
@@ -81,7 +82,7 @@ final public class SequentialFeaturizer implements Serializable {
     final public String[] getStrFeature(Sentence sent, int w_i) {
         k = 0;
         Token[] tokens = sent.tokens;
-        String[] feature = new String[30];
+        String[] feature = new String[37];
         
         for(int i=-SLIDE; i<SLIDE+1; ++i) {
             int index = w_i + i;
@@ -91,6 +92,7 @@ final public class SequentialFeaturizer implements Serializable {
 
             feature[k++] = "1_" + i + "_" + form;
             feature[k++] = "2_" + i + "_" + pos;
+            feature[k++] = "3_" + i + "_" + pos + "_" + form;
         }
         
         for(int i=0; i<bi.length; ++i) {
@@ -192,15 +194,15 @@ final public class SequentialFeaturizer implements Serializable {
         for (int i=0; i<featureID.length; ++i) {
             String p = feature[i];
 
-            if (!phi_dict.containsKey(p)) {
+            if (!phiDict.containsKey(p)) {
                 if (!test) {
-                    phi_dict.put(p, phi_dict.size());
-                    featureID[i] = phi_dict.get(p);
+                    phiDict.put(p, phiDict.size());
+                    featureID[i] = phiDict.get(p);
                 }
             }
             else {
                 c += 1;
-                featureID[i] = phi_dict.get(p);
+                featureID[i] = phiDict.get(p);
             }
         }
         if (test) featureID = Arrays.copyOfRange(featureID, 0, c);
@@ -232,15 +234,15 @@ final public class SequentialFeaturizer implements Serializable {
             else if (i < 4) p += label2;
             else p += label1 + "_" + label2;
 
-            if (!phi_dict.containsKey(p)) {
+            if (!phiDict.containsKey(p)) {
                 if (!test) {
-                    phi_dict.put(p, phi_dict.size());
-                    featureID[i] = phi_dict.get(p);
+                    phiDict.put(p, phiDict.size());
+                    featureID[i] = phiDict.get(p);
                 }
             }
             else {
                 c += 1;
-                featureID[i] = phi_dict.get(p);
+                featureID[i] = phiDict.get(p);
             }
         }
         if (test) featureID = Arrays.copyOfRange(featureID, 0, c);

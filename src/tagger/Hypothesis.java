@@ -14,7 +14,7 @@ import java.util.ArrayList;
 
 public class Hypothesis {
     final public int label;
-    final public double score;
+    public double score;
     public int[] phi;
     public int[] phi_l;
     public Hypothesis prevHypo;

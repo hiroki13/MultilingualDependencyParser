@@ -224,7 +224,7 @@ final public class Supertagger {
             double[] score = featureScore.add(markovFeatureScore).toArray();
                 
             for (int n=0; n<N_LABELS; ++n)
-                orderedHypoQueue.addSort(new Hypothesis(n, score[n], featureID_t, markovFeatureID, hypo));
+                orderedHypoQueue.addSort(n, score[n], featureID_t, markovFeatureID, hypo);
         }
             
         for (int k=0; k<BEAM_WIDTH; ++k) {
@@ -267,7 +267,7 @@ final public class Supertagger {
             double[] score = featureScore.add(markovFeatureScore).toArray();
                 
             for (int n=0; n<N_LABELS; ++n)
-                orderedHypoQueue.addSort(new Hypothesis(n, score[n], featureID_t, markovFeatureID, hypo));
+                orderedHypoQueue.addSort(n, score[n], featureID_t, markovFeatureID, hypo);
         }
             
         for (int k=0; k<BEAM_WIDTH; ++k) {

@@ -52,6 +52,24 @@ final public class Sentence {
         }
         else setArcs();
     }
+    
+    public void setGoldStags() {
+        boolean test = false;
+        if (STAG_ID == 2) setStagB(test);            
+        else if (STAG_ID == 3) setStagC(test);        
+        else if (STAG_ID == 4) setStagD(test);        
+        else if (STAG_ID == 5) setStagE(test);        
+        else if (STAG_ID == 6) setStagF(test);        
+        else if (STAG_ID == 7) setStagG(test);        
+        else if (STAG_ID == 8) setStagH(test);        
+        else if (STAG_ID == 9) setStagI(test);        
+        else if (STAG_ID == 10) setStagJ(test);        
+        else if (STAG_ID == 11) setStagK(test);        
+        else setStagA(test);
+        
+        for (int i=0; i<N_TOKENS; ++i)
+            tokens[i].STAG = stags[i];
+    }
 
     private int countMultiWords(ArrayList<String[]> lines) {
         int k = 0;
@@ -105,7 +123,8 @@ final public class Sentence {
 
             Token token1 = tokens[i];
 
-            if (token1.INDEX > token1.O_HEAD) parent = token1.O_LABEL + "/L";
+            if (token1.O_HEAD == 0) parent = token1.O_LABEL;
+            else if (token1.INDEX > token1.O_HEAD) parent = token1.O_LABEL + "/L";
             else parent = token1.O_LABEL + "/R";            
             
             for (int j=0; j<N_TOKENS; ++j) {
@@ -147,7 +166,8 @@ final public class Sentence {
 
             Token token1 = tokens[i];
 
-            if (token1.INDEX > token1.O_HEAD) stag = token1.O_LABEL + "/L";
+            if (token1.O_HEAD == 0) stag = token1.O_LABEL;
+            else if (token1.INDEX > token1.O_HEAD) stag = token1.O_LABEL + "/L";
             else stag = token1.O_LABEL + "/R";
             
             for (int j=0; j<N_TOKENS; ++j) {
@@ -204,7 +224,8 @@ final public class Sentence {
 
             Token token1 = tokens[i];
 
-            if (token1.INDEX > token1.O_HEAD) stag = token1.O_LABEL + "/L";
+            if (token1.O_HEAD == 0) stag = token1.O_LABEL;
+            else if (token1.INDEX > token1.O_HEAD) stag = token1.O_LABEL + "/L";
             else stag = token1.O_LABEL + "/R";
 
             if (!test) stags[i] = stagDict.getValue(stag);
@@ -228,7 +249,8 @@ final public class Sentence {
 
             Token token1 = tokens[i];
 
-            if (token1.INDEX > token1.O_HEAD) parent = "L";
+            if (token1.O_HEAD == 0) parent = "N";
+            else if (token1.INDEX > token1.O_HEAD) parent = "L";
             else parent = "R";            
             
             for (int j=0; j<N_TOKENS; ++j) {
@@ -424,7 +446,8 @@ final public class Sentence {
 
             Token token1 = tokens[i];
 
-            if (token1.INDEX > token1.O_HEAD) stag = token1.O_LABEL + "/L_";
+            if (token1.O_HEAD == 0) stag = token1.O_LABEL;
+            else if (token1.INDEX > token1.O_HEAD) stag = token1.O_LABEL + "/L_";
             else stag = token1.O_LABEL + "/R_";
             
             for (int j=0; j<N_TOKENS; ++j) {

@@ -26,12 +26,12 @@ import ling.Dict;
  * @author hiroki
  */
 
-final public class Mode {
+public class Mode {
     final OptionParser optionparser;
     final String selectedparser, modeselect;    
     final String TRAIN_FILE, TEST_FILE, OUTPUT_FILE, MODEL_FILE;    
     final int ITERATION, BEAM_WIDTH, WEIGHT_SIZE, WINDOW_SIZE, DATA_SIZE, N_SPLIT, STAG_ID;
-    final boolean PARSER, IS_STAG, GOLD_STAG, LABELED, IS_HASH;
+    final boolean PARSER, IS_STAG, USE_GOLD_STAG, LABELED, IS_HASH;
     Sentence[] trainData, testData;
 
     public Mode(String[] args) {
@@ -56,7 +56,7 @@ final public class Mode {
         N_SPLIT = optionparser.getInt("split", 5);
         STAG_ID = optionparser.getInt("stag_id", 1);
         IS_STAG = optionparser.isExsist("stag") || !("arcstandard".equals(selectedparser));
-        GOLD_STAG = optionparser.isExsist("gold_stag");
+        USE_GOLD_STAG = optionparser.isExsist("gold_stag");
         LABELED = optionparser.isExsist("labeled");
         IS_HASH = optionparser.isExsist("hash");
         PARSER = "arcstandard".equals(selectedparser);
@@ -67,7 +67,7 @@ final public class Mode {
 
         Sentence.PARSER = PARSER;
         Sentence.STAG_ID = STAG_ID;
-        Token.goldStag = GOLD_STAG;
+        Token.IS_GOLD_STAG = USE_GOLD_STAG;
 
         System.out.println("Loeading files...");
         trainData = reader.read(TRAIN_FILE, DATA_SIZE, PARSER, false);
