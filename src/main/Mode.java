@@ -81,6 +81,11 @@ public class Mode {
             System.out.println(String.format("\nStag ID: %d  Stags: %d", STAG_ID, Sentence.stagDict.size()));
             jackknife();
         }
+        else if ("data".equals(modeselect)) {
+            Supertagger supertagger = new Supertagger(BEAM_WIDTH, Sentence.stagDict.size(), WEIGHT_SIZE, WINDOW_SIZE, IS_HASH);
+            System.out.println(String.format("\nStag ID: %d  Stags: %d", STAG_ID, Sentence.stagDict.size()));
+            generateData(supertagger);
+        }
         else if ("arcstandard".equals(selectedparser)) {
             int labelSize = Token.vocabLabel.values.size();
             System.out.println(String.format("\nStagID: %d  Stags: %d  Labels: %d", STAG_ID, Token.vocabStag.values.size(), labelSize));
@@ -215,6 +220,10 @@ public class Mode {
         }
 
         return splitData;
+    }
+    
+    private void generateData(Supertagger supertagger) throws Exception{
+        supertagger.outputGoldStagText(OUTPUT_FILE, trainData);
     }
 
     private void test() throws IOException, ClassNotFoundException{

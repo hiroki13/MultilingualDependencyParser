@@ -166,7 +166,24 @@ final public class Supertagger {
         }
         pw.close();
     }
+    
+    public void outputGoldStagText(String fn, Sentence[] sents) throws IOException {
+        PrintWriter pw = new PrintWriter(new BufferedWriter(new FileWriter(fn + ".conll")));
 
+        for (int i=0; i<sents.length; ++i) {
+            Sentence sent = sents[i];
+
+            for (int j=0; j<sent.size(); ++j) {
+                Token t = sent.tokens[j];
+                String stag = Sentence.stagDict.getKey(sent.stags[j]);
+                String text = String.format("%d\t%s\t_\t%s\t%s\t%s\t%d\t%s\t_\t_", t.INDEX, t.O_FORM, t.O_CPOS, t.O_POS, stag, t.O_HEAD, t.O_LABEL);
+                pw.println(text);
+            }
+            pw.println();
+        }
+        pw.close();
+    }
+    
     private Hypothesis getOracleHypo(Sentence sent, int[][] featureID) {
         return updateHypo(0, sent, featureID, new Hypothesis());
     }
